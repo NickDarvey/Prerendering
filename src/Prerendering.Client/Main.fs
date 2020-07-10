@@ -10,13 +10,14 @@ open Bolero.Templating.Client
 
 /// Routing endpoints definition.
 type Page =
-    | [<EndPoint "/">] Home
-    | [<EndPoint "/counter">] Counter
+    | [<EndPoint "/counter">] Home
+    | [<EndPoint "/">] Counter
     | [<EndPoint "/data">] Data
 
 /// The Elmish application's model.
 type Model =
     {
+        subs: IDisposable
         page: Page
         counter: int
         books: Book[] option
@@ -37,6 +38,7 @@ and Book =
 
 let initModel =
     {
+        subs = Subscriptions.none
         page = Home
         counter = 0
         books = None
@@ -97,7 +99,13 @@ let update remote message model =
         | None -> Cmd.none
     match message with
     | SetPage page ->
-        { model with page = page }, Cmd.none
+        do model.subs.Dispose ()
+        let sub, cmd =
+            if page = Counter
+            then Sub.interval 5_000. <| fun dt -> dt.Second |> SetCounter
+            else Sub.none
+
+        { model with page = page; subs = sub }, cmd
 
     | Increment ->
         { model with counter = model.counter + 1 }, Cmd.none
@@ -193,6 +201,7 @@ let menuItem (model: Model) (page: Page) (text: string) =
         .Elt()
 
 let view model dispatch =
+    subscribe model.subs [
     Main()
         .Menu(concat [
             menuItem model Home "Home"
@@ -217,7 +226,7 @@ let view model dispatch =
                     .Hide(fun _ -> dispatch ClearError)
                     .Elt()
         )
-        .Elt()
+        .Elt() ]
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
