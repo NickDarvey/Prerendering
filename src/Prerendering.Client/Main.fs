@@ -10,8 +10,8 @@ open Bolero.Templating.Client
 
 /// Routing endpoints definition.
 type Page =
-    | [<EndPoint "/counter">] Home
-    | [<EndPoint "/">] Counter
+    | [<EndPoint "/">] Home
+    | [<EndPoint "/counter">] Counter
     | [<EndPoint "/data">] Data
 
 /// The Elmish application's model.
@@ -104,8 +104,11 @@ let update remote message model =
             if page = Counter
             then Sub.interval 5_000. <| fun dt -> dt.Second |> SetCounter
             else Sub.none
-
-        { model with page = page; subs = sub }, cmd
+        let redir =
+            if page = Home
+            then Cmd.ofMsg <| SetPage Counter
+            else Cmd.none
+        { model with page = page; subs = sub }, Cmd.batch [ cmd; redir ]
 
     | Increment ->
         { model with counter = model.counter + 1 }, Cmd.none
